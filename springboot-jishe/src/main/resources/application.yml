@@ -1,0 +1,25 @@
+server:
+  port: 8888
+---
+spring:
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    username: root
+    password: "123456"
+    url: jdbc:mysql://43.138.26.129:3306/JS_DATABASE
+
+---
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: assign_id
+---
+wjx:
+  data: static/new_data.json
+  json: static/json.json
+  big: static/data.json
+
