@@ -1,0 +1,355 @@
+<template>
+    <div class="home_div">
+        <!-- search -->
+        <div class="search">
+            <div class="searchfa">
+                <el-cascader
+                    size="mini"
+                    filterable
+                    clearable
+                    :options="options"
+                    v-model="selectedoptions"
+                    @change="handlechange"
+                    style="width:250px;"
+                ></el-cascader>
+                <!-- <el-button type="primary" size="default"  id="search">搜索</el-button> -->
+            </div>
+        </div>
+        <div class="input-item" style="z-index:10;">
+            <el-input placeholder="请输入关键字" size="mini" v-model="address" >
+                <template slot="prepend">请输入关键字</template>
+            </el-input>
+            <div class="result">
+                <pre v-text="result"></pre>
+            </div>
+        </div>
+        <div id="panelc"></div>
+        <div id="container"></div>
+        <div id="panel"></div>
+    </div>
+</template>
+
+
+
+<script>
+//  window.location.reload();
+// 三级级联筛选
+import { regionData, CodeToText, TextToCode } from "element-china-area-data";
+// 添加高德安全密钥
+window._AMapSecurityConfig = {
+    securityJsCode: "98a8c17ba8a3ccda25a97c956ef11065",
+};
+
+import AMapLoader from "@amap/amap-jsapi-loader";
+
+export default {
+    name: "Navagation3",
+    data() {
+        return {
+            // map: null,
+            options: regionData,
+            selectedoptions: [],
+            allresult: "",
+            result: "",
+            citycode: "",
+            endlocationlng: "",
+            endlocationlat: "",
+            startlng: "",
+            startlat: "",
+            // location:"",
+            result: "",
+            address: "",
+        };
+    },
+    created() {},
+    mounted() {
+        this.initmap();
+    },
+    created() {
+        store.dispatch("getInfo").then(() => {
+            this.form = {
+                id: this.user.id,
+                nickName: this.user.nickName,
+                gender: this.user.gender,
+                phone: this.user.phone,
+                province: this.user.province,
+                city: this.user.city,
+                country: this.user.country,
+            };
+            if (this.form.country !== "") {
+                this.selectedOptions = [
+                    TextToCode[this.form.province].code,
+                    TextToCode[this.form.province][this.form.city].code,
+                    TextToCode[this.form.province][this.form.city][
+                        this.form.country
+                    ].code,
+                ];
+            } else {
+                this.selectedOptions = [
+                    TextToCode[this.form.province].code,
+                    TextToCode[this.form.province][this.form.city].code,
+                ];
+            }
+        });
+    },
+    methods: {
+        initmap() {
+            AMapLoader.load({
+                key: "0444111cb1bcc63d90ffd5ed7e6cbac1", //设置您的key
+                version: "2.0",
+                plugins: [
+                    "AMap.Driving",
+                    "AMap.PlaceSearch",
+                    "AMap.Geolocation",
+                    "AMap.Autocomplete",
+                ],
+                AMapUI: {
+                    version: "1.1",
+                    plugins: [],
+                },
+                Loca: {
+                    version: "2.0",
+                },
+            })
+                .then((AMap) => {
+                    this.map = new AMap.Map("container", {
+                        viewMode: "3D",
+                        zoom: 12,
+                        zooms: [2, 22],
+                        center: [116.391935, 39.895534],
+                    });
+                    // // 关键字搜索
+                    // var placeSearch = new AMap.PlaceSearch({
+                    //     pageSize: 5, // 单页显示结果条数
+                    //     pageIndex: 1, // 页码
+                    //     city: this.citycode, // 兴趣点城市
+                    //     citylimit: true, //是否强制限制在设置的城市内搜索
+                    //     map: this.map, // 展现结果的地图实例
+                    //     panel: "panelc", // 结果列表将在此容器中进行展示。
+                    //     autoFitView: true, // 是否自动调整地图视野使绘制的 Marker点都处于视口的可见范围
+                    // });
+                    // //关键字查询
+                    // placeSearch.search(
+                    //     this.result + "充电站",
+                    //     function (status, result) {
+                    //         // console.log("兴趣点经纬度:"+result.poiList)
+                    //         console.log(result);
+                    //     }
+                    // );
+                    // // 定位
+
+                    // let that = this;
+                    // var geolocation = new AMap.Geolocation({
+                    //     enableHighAccuracy: true, //是否使用高精度定位，默认:true
+                    //     timeout: 10000, //超过10秒后停止定位，默认：5s
+                    //     position: "LB", //定位按钮的停靠位置
+                    //     buttonOffset: new AMap.Pixel(10, 20), //定位按钮与设置的停靠位置的偏移量，默认：Pixel(10, 20)
+                    //     zoomToAccuracy: true, //定位成功后是否自动调整地图视野到定位点
+                    // });
+
+                    // this.map.addControl(geolocation);
+                    // geolocation.getCurrentPosition(function (status, result) {
+                    //     //   console.log(result.data);
+                    //     if (status == "complete") {
+                    //         that.onComplete(result);
+                    //     } else {
+                    //         that.onError(result);
+                    //     }
+                    // });
+                    // 路线规划
+
+                    var vm = this;
+
+                    placeSearch.on("listElementClick", function (event) {
+                        console.log(event.data);
+                        var dataselect = event.data;
+                        var endlocationlng = dataselect.location.lng;
+                        vm.endlocationlng = endlocationlng;
+                        var endlocationlat = dataselect.location.lat;
+                        vm.endlocationlat = endlocationlat;
+                        console.log(endlocationlng);
+                        console.log(endlocationlat);
+                    });
+                    // 获取起始点位置
+                    var autoOptions = {
+                        //city 限定城市，默认全国
+                        city: "全国",
+                    };
+                    // 实例化AutoComplete
+                    var autoComplete = new AMap.AutoComplete(autoOptions);
+                    // 根据关键字进行搜索
+                    autoComplete.search(vm.address, function (status, result) {
+                        // 搜索成功时，result即是对应的匹配数据
+                        console.log(result);
+                        console.log(vm.address);
+                    });
+                    // 路线规划
+                    var driving = new AMap.Driving({
+                        map: this.map,
+                        panel: "panel",
+                    });
+                    driving.search(
+                        new AMap.LngLat(this.startlng, this.startlat),
+                        new AMap.LngLat(
+                            this.endlocationlng,
+                            this.endlocationlat
+                        ),
+
+                        function (status, result) {
+                            console.log(result);
+                            if (status === "complete") {
+                                console.log("绘制驾车路线完成");
+                            } else {
+                                console.log("获取驾车数据失败：" + result);
+                            }
+                        }
+                    );
+                })
+                .catch((e) => {
+                    console.log(e);
+                });
+            
+        },
+        handlechange(value) {
+            console.log(value);
+            this.citycode = value[1];
+            var arr = [];
+            arr[0] = CodeToText[value[0]];
+            arr[1] = CodeToText[value[1]];
+            arr[2] = CodeToText[value[2]];
+            var arr1 = [];
+            arr1[0] = arr[1];
+            arr1[1] = arr[2];
+            this.arr = arr1;
+            var result = arr.join("");
+            this.result = result;
+            console.log(this.result);
+            var arr2 = [];
+            arr2[0] = arr[0];
+            arr2[1] = arr[1];
+            arr2[2] = arr[2];
+            this.allresult = arr2;
+            this.provincename = this.allresult[0];
+            this.cityname = this.allresult[1];
+            this.areaname = this.allresult[2];
+            console.log(this.allresult);
+            // this.echartstitle =
+            //     this.allresult[0] + this.allresult[1] + this.allresult[2];
+            // console.log(this.echartstitle);
+        },
+        // onComplete(data) {
+        //     this.status = "定位成功";
+        //     console.log(data.position);
+        //     this.startlng = data.position.lng;
+        //     this.startlat = data.position.lat;
+        // },
+        // //解析定位错误信息
+        // onError(data) {
+        //     this.status = "定位失败";
+        //     this.result = "失败原因排查信息:" + data.message;
+        // },
+    },
+    watch: {
+        citycode(val) {
+            this.citycode = val;
+            this.initmap();
+        },
+        result(val) {
+            this.result = val;
+            this.initmap();
+        },
+        endlocationlng(val) {
+            this.endlocationlng = val;
+            this.initmap();
+        },
+        endlocationlat(val) {
+            this.endlocationlat = val;
+            this.initmap();
+        },
+        startlng(val) {
+            this.startlng = val;
+            this.initmap();
+        },
+        startlat(val) {
+            this.startlat = val;
+            this.initmap();
+        },
+    },
+};
+</script>
+<style scoped>
+.input-item {
+    position: fixed;
+    background: white;
+    padding: 20px 10px;
+    right: 50%;
+    top: 130px;
+}
+.input-item .result {
+    margin: 20px 0 10px;
+    max-height: 400px;
+    overflow-y: scroll;
+    width: 320px;
+}
+.search {
+    position: fixed;
+    z-index: 10;
+    left: 35%;
+    top: 100px;
+}
+.searchfa {
+    height: 150px;
+    margin-left: 10px;
+    position: relative;
+}
+#search {
+    position: absolute;
+    top: 0;
+    width: 80px;
+    height: 30px;
+    background-color: rgb(10, 68, 119);
+    border: none;
+
+    text-align: center;
+}
+.home_div {
+    padding: 0px;
+    margin: 0px;
+    width: 100%;
+    height: 100vh;
+    top: 0;
+    left: 0;
+    position: fixed;
+}
+#container {
+    padding: 0px;
+    margin: 0px;
+    width: 100%;
+    height: 100vh;
+    position: absolute;
+}
+
+#panel {
+    position: fixed;
+    background-color: white;
+    max-height: 90%;
+    overflow-y: auto;
+    top: 70px;
+    right: 20px;
+    width: 280px;
+}
+#panelc {
+    position: fixed;
+    z-index: 10;
+    /* background: white; */
+    padding: 10px;
+    left: 20px;
+    top: 70px;
+    /* background-color: white; */
+    max-height: 90%;
+    max-width: 340px;
+    overflow-y: auto;
+    width: 340px;
+}
+</style>
+
